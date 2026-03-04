@@ -120,22 +120,46 @@ export default function ShopeeOptimizer() {
             declBox,
           );
 
-          // Cola a declaração na metade superior da nova folha, no tamanho real
+          // Escala a declaração para 93% para abrir espaço no meio da folha
+          const scale = 0.93;
+          const declWidth = embeddedDeclaration.width * scale;
+          const declHeight = embeddedDeclaration.height * scale;
+          const declX = (a4Width - declWidth) / 2;
+          const declY = a4Height - declHeight; // Alinha ao topo da folha
+
+          // Cola a declaração na metade superior da nova folha, ligeiramente menor
           newPage.drawPage(embeddedDeclaration, {
-            x: 0,
-            y: halfHeight,
-            width: embeddedDeclaration.width,
-            height: embeddedDeclaration.height,
+            x: declX,
+            y: declY,
+            width: declWidth,
+            height: declHeight,
           });
 
-          // Adiciona a informação do Kit Chat no rodapé da Declaração
+          // Adiciona a informação do Kit Chat no meio da folha (entre declaração e etiqueta)
           if (isKitChat && kitChatColors.trim()) {
+            const text = `*** CORES DO KIT: ${kitChatColors.toUpperCase()} ***`;
+            let textSize = 14; // Tamanho base da fonte
+            let textWidth = customFont.widthOfTextAtSize(text, textSize);
+
+            // Diminui o tamanho da fonte se o texto for muito largo
+            const maxWidth = a4Width - 40;
+            while (textWidth > maxWidth && textSize > 6) {
+              textSize -= 1;
+              textWidth = customFont.widthOfTextAtSize(text, textSize);
+            }
+
+            const textX = (a4Width - textWidth) / 2;
+
+            // O espaço vazio fica entre o topo da etiqueta (yPos = 405) e a base da declaração (declY)
+            const gapCenterY = (yPos + declY) / 2;
+            const textY = gapCenterY - (textSize / 3);
+
             newPage.drawText(
-              `*** CORES DO KIT: ${kitChatColors.toUpperCase()} ***`,
+              text,
               {
-                x: 40,
-                y: halfHeight + 15, // Fica perfeitamente no rodapé da declaração, sem sobrepor nada
-                size: 12,
+                x: textX,
+                y: textY,
+                size: textSize,
                 font: customFont,
                 color: rgb(0, 0, 0),
               },
