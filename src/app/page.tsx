@@ -78,7 +78,7 @@ export default function ShopeeOptimizer() {
         // ==========================================
         const [copiedLabelPage] = await newPdf.copyPages(originalPdf, [i]);
 
-        // Recorta exatamente a metade superior da folha original
+        // Recorta a metade de cima da folha original
         const labelBox = {
           left: 0,
           right: a4Width,
@@ -87,47 +87,50 @@ export default function ShopeeOptimizer() {
         };
         const embeddedLabel = await newPdf.embedPage(copiedLabelPage, labelBox);
 
-        // Define a escala para ~65% para que a largura da etiqueta caiba na altura da meia página
-
         const rotatedWidth = embeddedLabel.height;
 
-        // Centraliza no eixo X e coloca o eixo Y num ponto seguro (logo abaixo do meio da folha)
+        // Centraliza a etiqueta e coloca ela na coordenada 380 
+        // (Isso deixa ela coladinha no rodapé e libera espaço no meio da folha)
         const xPos = (a4Width - rotatedWidth) / 2;
-        const yPos = 405;
+        const yPos = 315;
 
-        // Cola a etiqueta na metade inferior da nova folha, no tamanho real
+        // Cola a etiqueta
         newPage.drawPage(embeddedLabel, {
           x: xPos,
           y: yPos,
-          rotate: degrees(-90), // Isso deita a etiqueta na horizontal
+          rotate: degrees(-90),
         });
 
+        // ==========================================
+        // 2. PROCESSAR DECLARAÇÃO (METADE SUPERIOR)
+        // ==========================================
         // ==========================================
         // 2. PROCESSAR DECLARAÇÃO (METADE SUPERIOR)
         // ==========================================
         if (hasDeclaration) {
           const [copiedDeclPage] = await newPdf.copyPages(originalPdf, [i + 1]);
 
-          // Recorta exatamente a metade superior da folha original
+          // 1. RECORTA A DECLARAÇÃO (Corte no 380 salva a assinatura e a observação)
           const declBox = {
             left: 0,
             right: a4Width,
-            bottom: halfHeight,
+            bottom: 305, 
             top: a4Height,
           };
           const embeddedDeclaration = await newPdf.embedPage(
             copiedDeclPage,
-            declBox,
+            declBox
           );
 
-          // Escala a declaração para 93% para abrir espaço no meio da folha
-          const scale = 0.93;
-          const declWidth = embeddedDeclaration.width * scale;
-          const declHeight = embeddedDeclaration.height * scale;
+          // 2. COLA A DECLARAÇÃO NA PÁGINA NOVA
+          // Reduzimos a escala para 88% para ela caber tranquilamente no topo da folha
+          const scaleDecl = 0.88;
+          const declWidth = embeddedDeclaration.width * scaleDecl;
+          const declHeight = embeddedDeclaration.height * scaleDecl;
+          
           const declX = (a4Width - declWidth) / 2;
-          const declY = a4Height - declHeight; // Alinha ao topo da folha
+          const declY = a4Height - declHeight; // Cola exatamente no topo
 
-          // Cola a declaração na metade superior da nova folha, ligeiramente menor
           newPage.drawPage(embeddedDeclaration, {
             x: declX,
             y: declY,
@@ -135,13 +138,13 @@ export default function ShopeeOptimizer() {
             height: declHeight,
           });
 
-          // Adiciona a informação do Kit Chat no meio da folha (entre declaração e etiqueta)
+          // 3. ESCREVE AS CORES ABAIXO DA OBSERVAÇÃO
           if (isKitChat && kitChatColors.trim()) {
             const text = `*** CORES DO KIT: ${kitChatColors.toUpperCase()} ***`;
-            let textSize = 14; // Tamanho base da fonte
+            let textSize = 13;
             let textWidth = customFont.widthOfTextAtSize(text, textSize);
 
-            // Diminui o tamanho da fonte se o texto for muito largo
+            // Evita que o texto saia da página se for muito longo
             const maxWidth = a4Width - 40;
             while (textWidth > maxWidth && textSize > 6) {
               textSize -= 1;
@@ -150,20 +153,16 @@ export default function ShopeeOptimizer() {
 
             const textX = (a4Width - textWidth) / 2;
 
-            // O espaço vazio fica entre o topo da etiqueta (yPos = 405) e a base da declaração (declY)
-            const gapCenterY = (yPos + declY) / 2;
-            const textY = gapCenterY - (textSize / 3);
+            // Coloca o texto 25 pontos ABAIXO da linha final da declaração
+            const textY = declY - 25;
 
-            newPage.drawText(
-              text,
-              {
-                x: textX,
-                y: textY,
-                size: textSize,
-                font: customFont,
-                color: rgb(0, 0, 0),
-              },
-            );
+            newPage.drawText(text, {
+              x: textX,
+              y: textY,
+              size: textSize,
+              font: customFont,
+              color: rgb(0, 0, 0),
+            });
           }
         }
       }
