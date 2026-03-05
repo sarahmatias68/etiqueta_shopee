@@ -126,8 +126,8 @@ export default function ShopeeOptimizer() {
             declBox,
           );
 
-          // Escala a declaração para caber na metade superior (aprox 44% do tamanho original)
-          const scaleDecl = 0.44;
+          // Escala a declaração para caber na metade superior (reduzido para 42% para dar mais espaço no meio, conforme solicitado)
+          const scaleDecl = 0.42;
           const declWidth = embeddedDeclaration.width * scaleDecl;
           const declHeight = embeddedDeclaration.height * scaleDecl;
           const declX = (a4Width - declWidth) / 2;
