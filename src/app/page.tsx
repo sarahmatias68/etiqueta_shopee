@@ -87,28 +87,34 @@ export default function ShopeeOptimizer() {
         };
         const embeddedLabel = await newPdf.embedPage(copiedLabelPage, labelBox);
 
-        const rotatedWidth = embeddedLabel.height;
+        // Escala a etiqueta para caber confortavelmente com sobra para a declaração
+        const labelScale = 0.62;
+        const labelWidth = embeddedLabel.width * labelScale; // Aprox 369.07
+        const labelHeight = embeddedLabel.height * labelScale; // Aprox 260.98
 
-        // Centraliza no eixo X e coloca o eixo Y um pouco mais abaixo para abrir espaço para o texto
-        const xPos = (a4Width - rotatedWidth) / 2;
-        const yPos = 385; // Movemos a etiqueta levemente para baixo (era 405)
+        // Centraliza no eixo X
+        const xPos = (a4Width - labelHeight) / 2;
+        // Posiciona a etiqueta perto da margem inferior (15px da borda)
+        const yPos = 15 + labelWidth;
 
-        // Cola a etiqueta na metade inferior da nova folha, no tamanho real, deitada
+        // Cola a etiqueta na metade inferior da nova folha, ligeiramente menor, deitada
         newPage.drawPage(embeddedLabel, {
           x: xPos,
           y: yPos,
-          rotate: degrees(-90), // Isso deita a etiqueta na horizontal
+          width: labelWidth,
+          height: labelHeight,
+          rotate: degrees(-90), // Deita a etiqueta na horizontal
         });
 
         // ==========================================
         // 2. PROCESSAR DECLARAÇÃO (METADE SUPERIOR)
         // ==========================================
+        let declY = yPos; // Fallback se não houver declaração
         if (hasDeclaration) {
           const [copiedDeclPage] = await newPdf.copyPages(originalPdf, [i + 1]);
 
-          // Algumas declarações ultrapassam a metade da folha.
-          // Vamos capturar uma área maior (do bottom=280 até o topo) para não cortar a assinatura.
-          const declOrigBottom = 280;
+          // Capturamos a folha INTEIRA da declaração para garantir que a assinatura e notas nunca sejam cortadas
+          const declOrigBottom = 0;
           const declBox = {
             left: 0,
             right: a4Width,
@@ -120,51 +126,54 @@ export default function ShopeeOptimizer() {
             declBox,
           );
 
-          // Escala a declaração (agora maior) para 73% para caber bem na metade superior da folha nova
-          const scale = 0.73;
-          const declWidth = embeddedDeclaration.width * scale;
-          const declHeight = embeddedDeclaration.height * scale;
+          // Escala a declaração para caber na metade superior (aprox 44% do tamanho original)
+          const scaleDecl = 0.44;
+          const declWidth = embeddedDeclaration.width * scaleDecl;
+          const declHeight = embeddedDeclaration.height * scaleDecl;
           const declX = (a4Width - declWidth) / 2;
-          const declY = a4Height - declHeight; // Alinha ao topo da folha
+          // Alinha no topo com 15px de margem superior
+          declY = a4Height - declHeight - 15;
 
-          // Cola a declaração na metade superior da nova folha, ligeiramente menor
+          // Cola a declaração na metade superior da nova folha
           newPage.drawPage(embeddedDeclaration, {
             x: declX,
             y: declY,
             width: declWidth,
             height: declHeight,
           });
+        }
 
-          // Adiciona a informação do Kit Chat no meio da folha (entre declaração e etiqueta)
-          if (isKitChat && kitChatColors.trim()) {
-            const text = `*** CORES DO KIT: ${kitChatColors.toUpperCase()} ***`;
-            let textSize = 14; // Tamanho base da fonte
-            let textWidth = customFont.widthOfTextAtSize(text, textSize);
+        // ==========================================
+        // 3. TEXTO KIT CHAT (ESPAÇO NO MEIO)
+        // ==========================================
+        if (hasDeclaration && isKitChat && kitChatColors.trim()) {
+          const text = `*** CORES DO KIT: ${kitChatColors.toUpperCase()} ***`;
+          let textSize = 14; // Tamanho base da fonte
+          let textWidth = customFont.widthOfTextAtSize(text, textSize);
 
-            // Diminui o tamanho da fonte se o texto for muito largo
-            const maxWidth = a4Width - 40;
-            while (textWidth > maxWidth && textSize > 6) {
-              textSize -= 1;
-              textWidth = customFont.widthOfTextAtSize(text, textSize);
-            }
-
-            const textX = (a4Width - textWidth) / 2;
-
-            // O espaço vazio fica entre o topo da etiqueta (yPos = 405) e a base da declaração (declY)
-            const gapCenterY = (yPos + declY) / 2;
-            const textY = gapCenterY - (textSize / 3);
-
-            newPage.drawText(
-              text,
-              {
-                x: textX,
-                y: textY,
-                size: textSize,
-                font: customFont,
-                color: rgb(0, 0, 0),
-              },
-            );
+          // Diminui o tamanho da fonte se o texto for muito largo
+          const maxWidth = a4Width - 40;
+          while (textWidth > maxWidth && textSize > 6) {
+            textSize -= 1;
+            textWidth = customFont.widthOfTextAtSize(text, textSize);
           }
+
+          const textX = (a4Width - textWidth) / 2;
+
+          // O espaço vazio fica entre o topo da etiqueta (yPos) e a base da declaração (declY)
+          const gapCenterY = (yPos + declY) / 2;
+          const textY = gapCenterY - (textSize / 3);
+
+          newPage.drawText(
+            text,
+            {
+              x: textX,
+              y: textY,
+              size: textSize,
+              font: customFont,
+              color: rgb(0, 0, 0),
+            },
+          );
         }
       }
 
