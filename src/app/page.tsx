@@ -78,7 +78,7 @@ export default function ShopeeOptimizer() {
         // ==========================================
         const [copiedLabelPage] = await newPdf.copyPages(originalPdf, [i]);
 
-        // Recorta exatamente a metade superior da folha original
+        // Recorta exatamente a metade superior da folha original (que contém a etiqueta)
         const labelBox = {
           left: 0,
           right: a4Width,
@@ -87,15 +87,13 @@ export default function ShopeeOptimizer() {
         };
         const embeddedLabel = await newPdf.embedPage(copiedLabelPage, labelBox);
 
-        // Define a escala para ~65% para que a largura da etiqueta caiba na altura da meia página
-
         const rotatedWidth = embeddedLabel.height;
 
-        // Centraliza no eixo X e coloca o eixo Y num ponto seguro (logo abaixo do meio da folha)
+        // Centraliza no eixo X e coloca o eixo Y um pouco mais abaixo para abrir espaço para o texto
         const xPos = (a4Width - rotatedWidth) / 2;
-        const yPos = 405;
+        const yPos = 385; // Movemos a etiqueta levemente para baixo (era 405)
 
-        // Cola a etiqueta na metade inferior da nova folha, no tamanho real
+        // Cola a etiqueta na metade inferior da nova folha, no tamanho real, deitada
         newPage.drawPage(embeddedLabel, {
           x: xPos,
           y: yPos,
@@ -108,11 +106,13 @@ export default function ShopeeOptimizer() {
         if (hasDeclaration) {
           const [copiedDeclPage] = await newPdf.copyPages(originalPdf, [i + 1]);
 
-          // Recorta exatamente a metade superior da folha original
+          // Algumas declarações ultrapassam a metade da folha.
+          // Vamos capturar uma área maior (do bottom=280 até o topo) para não cortar a assinatura.
+          const declOrigBottom = 280;
           const declBox = {
             left: 0,
             right: a4Width,
-            bottom: halfHeight,
+            bottom: declOrigBottom,
             top: a4Height,
           };
           const embeddedDeclaration = await newPdf.embedPage(
@@ -120,8 +120,8 @@ export default function ShopeeOptimizer() {
             declBox,
           );
 
-          // Escala a declaração para 93% para abrir espaço no meio da folha
-          const scale = 0.93;
+          // Escala a declaração (agora maior) para 73% para caber bem na metade superior da folha nova
+          const scale = 0.73;
           const declWidth = embeddedDeclaration.width * scale;
           const declHeight = embeddedDeclaration.height * scale;
           const declX = (a4Width - declWidth) / 2;
